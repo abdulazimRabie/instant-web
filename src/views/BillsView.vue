@@ -2,10 +2,12 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Receipt, Search, Plus } from 'lucide-vue-next'
-import { bills, formatCurrency, timeAgo } from '@/composables/useInstantData'
+import { formatCurrency, timeAgo } from '@/composables/useInstantData'
+import { useBillsStore } from '@/stores/bills.js'
 import StatusBadge from '@/components/merchant/StatusBadge.vue'
 import ProgressBar from '@/components/merchant/ProgressBar.vue'
 
+const store = useBillsStore()
 const q = ref('')
 const filter = ref('all')
 
@@ -17,14 +19,14 @@ const FILTERS = [
 ]
 
 const counts = computed(() => ({
-  all: bills.length,
-  active: bills.filter((b) => b.status === 'active').length,
-  completed: bills.filter((b) => b.status === 'completed').length,
-  expired: bills.filter((b) => b.status === 'expired').length,
+  all: store.bills.length,
+  active: store.bills.filter((b) => b.status === 'active').length,
+  completed: store.bills.filter((b) => b.status === 'completed').length,
+  expired: store.bills.filter((b) => b.status === 'expired').length,
 }))
 
 const filtered = computed(() => {
-  return bills
+  return store.bills
     .filter((b) => (filter.value === 'all' ? true : b.status === filter.value))
     .filter((b) =>
       q.value.trim()

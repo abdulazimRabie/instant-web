@@ -1,30 +1,59 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import QrcodeVue from 'qrcode.vue'
-import { ArrowLeft, Check, Copy, Share2, X } from 'lucide-vue-next'
+import { ArrowLeft, Check, Copy, Share2, X, Loader2 } from 'lucide-vue-next'
 import {
   formatCurrency,
-  getBill,
   initialOf,
   timeAgo,
 } from '@/composables/useInstantData'
+import { useBillsStore } from '@/stores/bills.js'
 import StatusBadge from '@/components/merchant/StatusBadge.vue'
 import ProgressBar from '@/components/merchant/ProgressBar.vue'
 import Avatar from '@/components/merchant/Avatar.vue'
 
 const route = useRoute()
-const id = route.params.id
-const bill = getBill(id)
+const store = useBillsStore()
+
+const id = computed(() => route.params.id)
+const bill = ref(null)
+const loading = ref(true)
+const notFound = ref(false)
+
+async function loadBill() {
+  loading.value = true
+  notFound.value = false
+
+  try {
+    const localBill = store.getBill(id.value)
+    if (localBill) {
+      bill.value = localBill
+    }
+
+    // Always fetch fresh data from the API
+    const fresh = await store.fetchBill(id.value)
+    bill.value = fresh
+  } catch {
+    if (!bill.value) {
+      notFound.value = true
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadBill)
+watch(id, loadBill)
 
 const copied = ref(null)
 
-const remaining = computed(() => (bill ? Math.max(0, bill.total - bill.collected) : 0))
-const pct = computed(() => (bill ? (bill.collected / bill.total) * 100 : 0))
+const remaining = computed(() => (bill.value ? Math.max(0, bill.value.total - bill.value.collected) : 0))
+const pct = computed(() => (bill.value && bill.value.total > 0 ? (bill.value.collected / bill.value.total) * 100 : 0))
 const sortedContribs = computed(() =>
-  bill ? [...bill.contributors].sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()) : []
+  bill.value ? [...bill.value.contributors].sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()) : []
 )
-const link = computed(() => (bill ? `https://instant.app/p/${bill.id}` : ''))
+const link = computed(() => (bill.value ? `https://instant.app/p/${bill.value.id}` : ''))
 
 function copy(kind, value) {
   navigator.clipboard?.writeText(value).then(() => {
@@ -35,7 +64,12 @@ function copy(kind, value) {
 </script>
 
 <template>
-  <div v-if="!bill" class="rounded-3xl border border-border bg-surface p-10 text-center shadow-card">
+  <div v-if="loading" class="flex flex-col items-center justify-center py-20">
+    <Loader2 class="h-8 w-8 animate-spin text-text-muted" />
+    <p class="mt-3 text-sm text-text-secondary">Loading bill…</p>
+  </div>
+
+  <div v-else-if="notFound || !bill" class="rounded-3xl border border-border bg-surface p-10 text-center shadow-card">
     <h1 class="font-display text-xl font-bold">Bill not found</h1>
     <p class="mt-2 text-sm text-text-secondary">This bill ID doesn't exist.</p>
     <RouterLink

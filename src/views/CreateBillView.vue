@@ -3,24 +3,27 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Trash2, ArrowRight, Receipt } from 'lucide-vue-next'
 import { formatCurrency } from '@/composables/useInstantData'
+import { useBillsStore } from '@/stores/bills.js'
 
 const router = useRouter()
+const store = useBillsStore()
 
 const title = ref('Table 14 · Friday Dinner')
 const description = ref('')
 const items = ref([
-  { id: crypto.randomUUID(), name: 'Truffle Pasta', amount: '24.00' },
-  { id: crypto.randomUUID(), name: 'Wagyu Burger', amount: '32.00' },
-  { id: crypto.randomUUID(), name: 'House Red', amount: '48.00' },
+  { id: crypto.randomUUID(), name: 'Truffle Pasta', amount: '24.00', quantity: 1 },
+  { id: crypto.randomUUID(), name: 'Wagyu Burger', amount: '32.00', quantity: 1 },
+  { id: crypto.randomUUID(), name: 'House Red', amount: '48.00', quantity: 1 },
 ])
 const fees = ref('8.50')
+const submitting = ref(false)
 
 function newRow() {
-  return { id: crypto.randomUUID(), name: '', amount: '' }
+  return { id: crypto.randomUUID(), name: '', amount: '', quantity: 1 }
 }
 
 const subtotal = computed(() =>
-  items.value.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
+  items.value.reduce((s, r) => s + (parseFloat(r.amount) || 0) * (r.quantity || 1), 0)
 )
 const total = computed(() => subtotal.value + (parseFloat(fees.value) || 0))
 
@@ -31,10 +34,24 @@ function remove(id) {
   items.value = items.value.length === 1 ? items.value : items.value.filter((r) => r.id !== id)
 }
 
-function generate(e) {
+async function generate(e) {
   e.preventDefault()
-  // Mock: jump to the first existing bill detail
-  router.push('/app/bill/INS-2K9F4D')
+  if (submitting.value) return
+
+  submitting.value = true
+  try {
+    const bill = await store.createBill({
+      title: title.value,
+      description: description.value,
+      items: items.value,
+      fees: fees.value,
+    })
+    router.push(`/app/bill/${bill.id}`)
+  } catch {
+    // Error is stored in store.error
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -98,7 +115,7 @@ function generate(e) {
             <div
               v-for="(row, idx) in items"
               :key="row.id"
-              class="grid grid-cols-[auto_1fr_120px_auto] items-center gap-3 px-3 py-2.5"
+              class="grid grid-cols-[auto_1fr_80px_120px_auto] items-center gap-3 px-3 py-2.5"
             >
               <span class="grid h-7 w-7 place-items-center rounded-lg bg-surface text-[11px] font-bold text-text-secondary">
                 {{ idx + 1 }}
@@ -107,6 +124,15 @@ function generate(e) {
                 v-model="row.name"
                 placeholder="Item name"
                 class="h-9 w-full rounded-lg border border-transparent bg-transparent px-2 text-sm font-medium outline-none transition focus:border-border focus:bg-surface"
+              />
+              <input
+                type="number"
+                min="1"
+                inputmode="numeric"
+                :value="row.quantity"
+                @input="update(row.id, { quantity: Math.max(1, parseInt($event.target.value) || 1) })"
+                placeholder="Qty"
+                class="h-9 w-full rounded-lg border border-transparent bg-transparent px-2 text-center text-sm font-medium outline-none transition focus:border-border focus:bg-surface"
               />
               <div class="relative">
                 <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-xs text-text-muted">
@@ -154,11 +180,19 @@ function generate(e) {
 
       <button
         type="submit"
-        class="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-bold text-primary-foreground transition hover:bg-ink-soft"
+        :disabled="submitting"
+        class="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-bold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Generate Bill
-        <ArrowRight class="h-4 w-4" />
+        <span v-if="submitting">Generating…</span>
+        <template v-else>
+          Generate Bill
+          <ArrowRight class="h-4 w-4" />
+        </template>
       </button>
+
+      <p v-if="store.error" class="mt-3 text-center text-sm text-destructive">
+        {{ store.error }}
+      </p>
     </form>
 
     <!-- Live summary -->
@@ -176,9 +210,12 @@ function generate(e) {
             :key="i.id"
             class="flex justify-between text-primary-foreground/80"
           >
-            <span class="truncate pr-4">{{ i.name || 'Item' }}</span>
+            <span class="truncate pr-4">
+              {{ i.name || 'Item' }}
+              <span v-if="(i.quantity || 1) > 1" class="text-primary-foreground/50">×{{ i.quantity || 1 }}</span>
+            </span>
             <span class="font-semibold tabular-nums">
-              {{ formatCurrency(parseFloat(i.amount) || 0) }}
+              {{ formatCurrency((parseFloat(i.amount) || 0) * (i.quantity || 1)) }}
             </span>
           </div>
         </div>
