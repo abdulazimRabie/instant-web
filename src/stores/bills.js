@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-const API_BASE = 'https://instant-production-api.up.railway.app/api'
+const API_BASE = 'https://nodejs-instant-api-production.up.railway.app/api'
 
 function mapApiBillToFrontend(apiBill, localData = {}) {
   const items = (apiBill.items || []).map((item, idx) => ({
