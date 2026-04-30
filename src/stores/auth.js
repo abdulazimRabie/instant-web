@@ -95,6 +95,54 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function getOnboardingLink() {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await fetch(`${API_BASE}/auth/merchant/onboarding-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.value.token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || `Failed to get onboarding link: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data.url
+    } catch (err) {
+      error.value = err.message || 'Failed to get onboarding link'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function refreshMerchant() {
+    if (!auth.value?.token) return
+    try {
+      const response = await fetch(`${API_BASE}/auth/merchant/me`, {
+        headers: {
+          Authorization: `Bearer ${auth.value.token}`,
+        },
+      })
+
+      if (!response.ok) return
+
+      const data = await response.json()
+      if (data.merchant) {
+        auth.value = { ...auth.value, merchant: data.merchant }
+        saveAuth(auth.value)
+      }
+    } catch {
+      // silently ignore refresh errors
+    }
+  }
+
   function logout() {
     auth.value = null
     clearAuth()
@@ -110,6 +158,8 @@ export const useAuthStore = defineStore('auth', () => {
     initials,
     loginMerchant,
     signupMerchant,
+    getOnboardingLink,
+    refreshMerchant,
     logout,
   }
 })

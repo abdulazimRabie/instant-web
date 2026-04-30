@@ -111,14 +111,15 @@ function onLogout() {
                 <CreditCard class="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>Connect a Stripe account to start creating bills.</span>
               </div>
-              <RouterLink
-                to="/app/create"
-                class="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft"
-                @click="showAccountMenu = false"
+              <button
+                type="button"
+                :disabled="auth.loading"
+                class="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50"
+                @click="async () => { showAccountMenu = false; const url = await auth.getOnboardingLink(); window.location.href = url }"
               >
                 <CreditCard class="h-3.5 w-3.5" />
-                Connect now
-              </RouterLink>
+                {{ auth.loading ? 'Connecting…' : 'Connect now' }}
+              </button>
             </div>
             <div
               v-else

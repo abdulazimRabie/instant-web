@@ -10,12 +10,9 @@ const verifying = ref(true)
 const verified = ref(false)
 
 onMounted(async () => {
-  // In the future: call backend to verify Stripe Connect onboarding completion
-  // and update the merchant record with stripe_account_id.
-  // For now, simulate a brief verification.
   try {
-    await new Promise((r) => setTimeout(r, 800))
-    verified.value = true
+    await auth.refreshMerchant()
+    verified.value = !!auth.merchant?.stripe_account_id
   } finally {
     verifying.value = false
   }

@@ -29,15 +29,10 @@ async function startStripeConnect() {
   if (connecting.value) return
   connecting.value = true
   try {
-    // Placeholder: in the future, call backend endpoint that returns Stripe Connect onboarding URL.
-    // const response = await fetch(`${API_BASE}/auth/merchant/stripe-connect`, { ... })
-    // const { url } = await response.json()
-    // window.location.href = url
-    await new Promise((r) => setTimeout(r, 600))
-    // For now, simulate by redirecting to the refresh page as a placeholder
-    router.push('/connect/refresh')
-  } catch {
-    router.push('/connect/refresh')
+    const url = await auth.getOnboardingLink()
+    window.location.href = url
+  } catch (err) {
+    store.error = err.message || 'Failed to start Stripe Connect onboarding'
   } finally {
     connecting.value = false
   }
