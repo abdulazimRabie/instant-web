@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
-import { Plus, Trash2, ArrowRight, Receipt, CreditCard, LogIn, ArrowUpRight, Loader2 } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Plus, Trash2, ArrowRight, Receipt, CreditCard, Loader2 } from 'lucide-vue-next'
 import { formatCurrency } from '@/composables/useInstantData'
 import { useBillsStore } from '@/stores/bills.js'
 import { useAuthStore } from '@/stores/auth.js'
@@ -21,8 +21,6 @@ const fees = ref('8.50')
 const submitting = ref(false)
 const connecting = ref(false)
 
-const canCreateBill = computed(() => auth.isAuthenticated && !!auth.merchant?.stripe_account_id)
-const needsAuth = computed(() => !auth.isAuthenticated)
 const needsStripe = computed(() => auth.isAuthenticated && !auth.merchant?.stripe_account_id)
 
 async function startStripeConnect() {
@@ -56,7 +54,7 @@ function remove(id) {
 
 async function generate(e) {
   e.preventDefault()
-  if (submitting.value || !canCreateBill.value) return
+  if (submitting.value) return
 
   submitting.value = true
   try {
@@ -91,56 +89,30 @@ async function generate(e) {
         </div>
       </div>
 
-      <!-- Not authenticated -->
-      <div v-if="needsAuth" class="mt-6 rounded-3xl border border-border bg-surface p-8 shadow-card text-center">
-        <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-input-bg text-text-muted">
-          <LogIn class="h-6 w-6" />
-        </span>
-        <h3 class="font-display mt-4 text-lg font-bold">Log in to create bills</h3>
-        <p class="mx-auto mt-1.5 max-w-sm text-sm text-text-secondary">
-          Sign in to your merchant account to generate shared bills and track payments.
-        </p>
-        <div class="mt-5 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-          <RouterLink
-            to="/login"
-            class="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft"
+      <!-- Stripe connect prompt (non-blocking) -->
+      <div v-if="needsStripe" class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+        <div class="flex items-start gap-3">
+          <CreditCard class="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div class="flex-1">
+            <p class="font-semibold">Connect Stripe to accept payments</p>
+            <p class="mt-0.5 text-xs text-amber-700">
+              You can still create and preview bills. Guests won't be able to pay until you connect a Stripe account.
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="startStripeConnect"
+            :disabled="connecting"
+            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50"
           >
-            <LogIn class="h-4 w-4" /> Log in
-          </RouterLink>
-          <RouterLink
-            to="/signup"
-            class="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-surface px-5 text-xs font-semibold text-foreground transition hover:bg-input-bg"
-          >
-            Create account
-          </RouterLink>
+            <Loader2 v-if="connecting" class="h-3.5 w-3.5 animate-spin" />
+            <span v-else>Connect</span>
+          </button>
         </div>
       </div>
 
-      <!-- Needs Stripe -->
-      <div v-else-if="needsStripe" class="mt-6 rounded-3xl border border-border bg-surface p-8 shadow-card text-center">
-        <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-600">
-          <CreditCard class="h-6 w-6" />
-        </span>
-        <h3 class="font-display mt-4 text-lg font-bold">Connect payments first</h3>
-        <p class="mx-auto mt-1.5 max-w-sm text-sm text-text-secondary">
-          To start creating bills, you need to connect a Stripe account so guests can pay you directly.
-        </p>
-        <button
-          type="button"
-          @click="startStripeConnect"
-          :disabled="connecting"
-          class="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50"
-        >
-          <Loader2 v-if="connecting" class="h-4 w-4 animate-spin" />
-          <CreditCard v-else class="h-4 w-4" />
-          {{ connecting ? 'Connecting…' : 'Connect to payment' }}
-          <ArrowUpRight v-if="!connecting" class="h-3.5 w-3.5" />
-        </button>
-        <p class="mt-3 text-[11px] text-text-muted">Stripe Connect integration coming soon.</p>
-      </div>
-
-      <!-- Actual form -->
-      <form v-else @submit="generate" class="mt-6 space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
+      <!-- Bill creation form -->
+      <form @submit="generate" class="mt-6 space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
         <label class="block">
           <span class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
             Bill title

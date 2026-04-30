@@ -56,7 +56,6 @@ const router = createRouter({
     {
       path: '/app',
       component: AppLayout,
-      meta: { requiresAuth: true },
       children: [
         {
           path: 'create',
@@ -67,6 +66,7 @@ const router = createRouter({
           path: 'bills',
           name: 'bills',
           component: BillsView,
+          meta: { requiresAuth: true },
         },
         {
           path: 'bill/:id',

@@ -97,9 +97,15 @@ export const useBillsStore = defineStore('bills', () => {
         items,
       }
 
+      const auth = useAuthStore()
+      const headers = { 'Content-Type': 'application/json' }
+      if (auth.auth?.token) {
+        headers['Authorization'] = `Bearer ${auth.auth.token}`
+      }
+
       const response = await fetch(`${API_BASE}/bills`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
       })
 
@@ -189,7 +195,13 @@ export const useBillsStore = defineStore('bills', () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/bills/merchant?merchant_id=${encodeURIComponent(resolvedId)}`)
+      const auth = useAuthStore()
+      const headers = {}
+      if (auth.auth?.token) {
+        headers['Authorization'] = `Bearer ${auth.auth.token}`
+      }
+
+      const response = await fetch(`${API_BASE}/bills/merchant?merchant_id=${encodeURIComponent(resolvedId)}`, { headers })
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
