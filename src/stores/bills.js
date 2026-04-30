@@ -13,8 +13,22 @@ function deriveTitle(apiBill) {
   return `${first} +${items.length - 1} more`
 }
 
+function parseItems(itemsField) {
+  if (Array.isArray(itemsField)) return itemsField
+  if (typeof itemsField === 'string') {
+    try {
+      const parsed = JSON.parse(itemsField)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 function mapApiBillToFrontend(apiBill, localData = {}) {
-  const items = (Array.isArray(apiBill.items) ? apiBill.items : []).map((item, idx) => ({
+  const rawItems = parseItems(apiBill.items)
+  const items = rawItems.map((item, idx) => ({
     id: `i${idx + 1}`,
     name: item.title,
     amount: item.price,
@@ -51,6 +65,7 @@ function mapApiBillToFrontend(apiBill, localData = {}) {
     expiresAt: apiBill.expires_at,
     token: apiBill.token,
     qrUrl: apiBill.qr_url,
+    contributorsCount: apiBill.contributors_count ?? 0,
     contributors: localData.contributors || [],
     ...localData,
   }
@@ -199,9 +214,37 @@ export const useBillsStore = defineStore('bills', () => {
     }
   }
 
+  async function fetchContributors(billId) {
+    const auth = useAuthStore()
+    if (!auth.auth?.token) return []
+
+    const response = await fetch(`${API_BASE}/payments/${billId}`, {
+      headers: {
+        Authorization: `Bearer ${auth.auth.token}`,
+      },
+    })
+
+    if (!response.ok) {
+      // 401 = not authenticated, 403 = not a merchant, 404 = no payments yet
+      if (response.status === 401 || response.status === 403 || response.status === 404) {
+        return []
+      }
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.message || `Failed to fetch contributors: ${response.status}`)
+    }
+
+    const payments = await response.json()
+    return (Array.isArray(payments) ? payments : []).map((p) => ({
+      id: String(p.id),
+      name: p.user_name || 'Anonymous',
+      amount: parseFloat(p.amount) || 0,
+      paidAt: p.paid_at || p.created_at,
+    }))
+  }
+
   function getBill(id) {
     return bills.value.find((b) => b.id === String(id))
   }
 
-  return { bills, loading, error, createBill, fetchBill, fetchMerchantBills, getBill }
+  return { bills, loading, error, createBill, fetchBill, fetchMerchantBills, getBill, fetchContributors }
 })

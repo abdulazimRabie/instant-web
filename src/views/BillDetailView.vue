@@ -18,6 +18,7 @@ const store = useBillsStore()
 
 const id = computed(() => route.params.id)
 const bill = ref(null)
+const contributors = ref([])
 const loading = ref(true)
 const notFound = ref(false)
 
@@ -38,6 +39,10 @@ async function loadBill() {
     // Always fetch fresh data from the API
     const fresh = await store.fetchBill(id.value, { token: explicitToken })
     bill.value = fresh
+
+    // Fetch real contributors from the API
+    contributors.value = await store.fetchContributors(id.value)
+    console.log(contributors.value)
   } catch {
     if (!bill.value) {
       notFound.value = true
@@ -55,7 +60,7 @@ const copied = ref(null)
 const remaining = computed(() => (bill.value ? Math.max(0, bill.value.total - bill.value.collected) : 0))
 const pct = computed(() => (bill.value && bill.value.total > 0 ? (bill.value.collected / bill.value.total) * 100 : 0))
 const sortedContribs = computed(() =>
-  bill.value ? [...bill.value.contributors].sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()) : []
+  [...contributors.value].sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())
 )
 const APP_BASE_URL = import.meta.env.VITE_APP_URL || window.location.origin
 
@@ -267,11 +272,11 @@ function copy(kind, value) {
 
           <div class="mt-6 grid grid-cols-3 gap-3 border-t border-divider pt-5 text-center">
             <div>
-              <p class="font-display text-base font-bold tabular-nums">{{ String(bill.contributors.length) }}</p>
+              <p class="font-display text-base font-bold tabular-nums">{{ String(contributors.length) }}</p>
               <p class="mt-0.5 text-[11px] text-text-secondary">Contributors</p>
             </div>
             <div>
-              <p class="font-display text-base font-bold tabular-nums">{{ formatCurrency(bill.collected / Math.max(1, bill.contributors.length)) }}</p>
+              <p class="font-display text-base font-bold tabular-nums">{{ formatCurrency(bill.collected / Math.max(1, contributors.length)) }}</p>
               <p class="mt-0.5 text-[11px] text-text-secondary">Avg. payment</p>
             </div>
             <div>
@@ -285,7 +290,7 @@ function copy(kind, value) {
           <div class="flex items-center justify-between border-b border-divider px-6 py-4">
             <h2 class="font-display text-base font-bold">Contributors</h2>
             <span class="text-[11px] font-semibold text-text-secondary">
-              Newest first · {{ bill.contributors.length }}
+              Newest first · {{ contributors.length }}
             </span>
           </div>
           <ul class="divide-y divide-divider">

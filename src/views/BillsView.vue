@@ -159,7 +159,7 @@ onMounted(async () => {
           <div class="mt-3">
             <ProgressBar :value="(b.collected / b.total) * 100" />
             <div class="mt-2 flex justify-between text-[11px] text-text-secondary">
-              <span>{{ b.contributors.length }} contributors · {{ timeAgo(b.createdAt) }}</span>
+              <span>{{ b.contributorsCount }} contributors · {{ timeAgo(b.createdAt) }}</span>
               <span class="font-semibold text-foreground">{{ Math.round((b.collected / b.total) * 100) }}%</span>
             </div>
           </div>
