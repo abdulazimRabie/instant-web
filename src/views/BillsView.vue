@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Receipt, Search, Plus, Loader2 } from 'lucide-vue-next'
+import { Receipt, Search, Plus, Loader2, CreditCard, LogIn } from 'lucide-vue-next'
 import { formatCurrency, timeAgo } from '@/composables/useInstantData'
 import { useBillsStore } from '@/stores/bills.js'
 import { useAuthStore } from '@/stores/auth.js'
@@ -61,6 +61,23 @@ onMounted(async () => {
         </p>
       </div>
       <RouterLink
+        v-if="!auth.isAuthenticated"
+        to="/login"
+        class="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-surface px-5 text-xs font-semibold text-foreground transition hover:bg-input-bg"
+      >
+        <LogIn class="h-4 w-4" /> Log in
+      </RouterLink>
+
+      <RouterLink
+        v-else-if="!auth.merchant?.stripe_account_id"
+        to="/app/create"
+        class="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-surface px-5 text-xs font-semibold text-foreground transition hover:bg-input-bg"
+      >
+        <CreditCard class="h-4 w-4" /> Connect payment
+      </RouterLink>
+
+      <RouterLink
+        v-else
         to="/app/create"
         class="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft"
       >
@@ -173,13 +190,14 @@ onMounted(async () => {
         <p class="mx-auto mt-1.5 max-w-sm text-sm text-text-secondary">
           Try a different filter, or create a fresh bill to get started.
         </p>
-        <RouterLink
-          to="/app/create"
-          class="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground"
-        >
-          <Plus class="h-4 w-4" /> Create a bill
-        </RouterLink>
-      </div>
-    </template>
-  </div>
+      <RouterLink
+        v-if="auth.isAuthenticated && auth.merchant?.stripe_account_id"
+        to="/app/create"
+        class="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground"
+      >
+        <Plus class="h-4 w-4" /> Create a bill
+      </RouterLink>
+    </div>
+  </template>
+</div>
 </template>

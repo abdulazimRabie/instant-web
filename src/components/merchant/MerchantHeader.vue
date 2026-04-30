@@ -1,18 +1,13 @@
 <script setup>
 import { ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { Bell, Plus, Receipt, Loader2, LogOut, User } from 'lucide-vue-next'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { Bell, Plus, Receipt, LogOut, User, CreditCard } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.js'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
-const showAuthPanel = ref(false)
-
-const loginForm = ref({ email: '', password: '' })
-const signupForm = ref({ name: '', email: '', password: '', stripe_account_id: '' })
-const authTab = ref('login')
-const localLoading = ref(false)
-const localError = ref(null)
+const showAccountMenu = ref(false)
 
 const navItems = [
   { to: '/app/create', label: 'Create Bill' },
@@ -32,37 +27,10 @@ function mobileActive(to, matchPrefix) {
   return route.path.startsWith(to)
 }
 
-async function onLogin() {
-  localLoading.value = true
-  localError.value = null
-  try {
-    await auth.loginMerchant({ ...loginForm.value })
-    showAuthPanel.value = false
-    loginForm.value = { email: '', password: '' }
-  } catch (err) {
-    localError.value = err.message
-  } finally {
-    localLoading.value = false
-  }
-}
-
-async function onSignup() {
-  localLoading.value = true
-  localError.value = null
-  try {
-    await auth.signupMerchant({ ...signupForm.value })
-    showAuthPanel.value = false
-    signupForm.value = { name: '', email: '', password: '', stripe_account_id: '' }
-  } catch (err) {
-    localError.value = err.message
-  } finally {
-    localLoading.value = false
-  }
-}
-
 function onLogout() {
   auth.logout()
-  showAuthPanel.value = false
+  showAccountMenu.value = false
+  router.push('/')
 }
 </script>
 
@@ -105,128 +73,69 @@ function onLogout() {
         >
           <Bell class="h-4 w-4" />
         </button>
+
         <RouterLink
-          to="/app/create"
-          class="hidden h-10 items-center gap-2 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft sm:inline-flex"
+          v-if="!auth.isAuthenticated"
+          to="/login"
+          class="hidden h-10 items-center gap-2 rounded-full border border-border bg-surface px-4 text-xs font-semibold text-foreground transition hover:bg-input-bg sm:inline-flex"
         >
-          <Plus class="h-4 w-4" />
-          New bill
+          <User class="h-3.5 w-3.5" />
+          Log in
         </RouterLink>
 
-        <!-- Auth avatar / dropdown trigger -->
-        <div class="relative">
+        <!-- Authenticated account dropdown -->
+        <div v-else class="relative">
           <button
             type="button"
-            @click="showAuthPanel = !showAuthPanel"
+            @click="showAccountMenu = !showAccountMenu"
             class="grid h-10 w-10 place-items-center rounded-full text-xs font-bold transition"
-            :class="auth.isAuthenticated ? 'bg-success-bg text-success-fg' : 'bg-input-bg text-text-muted border border-border'"
-            :aria-label="auth.isAuthenticated ? 'Account menu' : 'Log in'"
+            :class="auth.merchant?.stripe_account_id ? 'bg-success-bg text-success-fg' : 'bg-amber-50 text-amber-600 border border-amber-200'"
+            :title="auth.merchant?.stripe_account_id ? 'Account connected' : 'Stripe not connected'"
+            aria-label="Account menu"
           >
-            <template v-if="auth.isAuthenticated">{{ auth.initials }}</template>
-            <User v-else class="h-4 w-4" />
+            {{ auth.initials }}
           </button>
 
-          <!-- Auth panel -->
           <div
-            v-if="showAuthPanel"
-            class="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-border bg-surface p-5 shadow-pop"
+            v-if="showAccountMenu"
+            class="absolute right-0 top-12 z-50 w-64 rounded-2xl border border-border bg-surface p-5 shadow-pop"
           >
-            <div v-if="auth.isAuthenticated">
-              <p class="font-display text-sm font-bold">{{ auth.merchant?.name || 'Merchant' }}</p>
-              <p class="mt-0.5 text-xs text-text-secondary">{{ auth.merchant?.email }}</p>
-              <button
-                type="button"
-                @click="onLogout"
-                class="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-border text-xs font-semibold text-text-secondary transition hover:bg-input-bg"
-              >
-                <LogOut class="h-3.5 w-3.5" />
-                Sign out
-              </button>
-            </div>
+            <p class="font-display text-sm font-bold">{{ auth.merchant?.name || 'Merchant' }}</p>
+            <p class="mt-0.5 text-xs text-text-secondary">{{ auth.merchant?.email }}</p>
 
-            <div v-else>
-              <div class="flex rounded-xl border border-border bg-input-bg p-0.5">
-                <button
-                  type="button"
-                  @click="authTab = 'login'"
-                  :class="['flex-1 rounded-lg py-1.5 text-[11px] font-semibold transition', authTab === 'login' ? 'bg-surface text-foreground shadow-sm' : 'text-text-secondary']"
-                >
-                  Log in
-                </button>
-                <button
-                  type="button"
-                  @click="authTab = 'signup'"
-                  :class="['flex-1 rounded-lg py-1.5 text-[11px] font-semibold transition', authTab === 'signup' ? 'bg-surface text-foreground shadow-sm' : 'text-text-secondary']"
-                >
-                  Sign up
-                </button>
+            <div
+              v-if="!auth.merchant?.stripe_account_id"
+              class="mt-3 space-y-2"
+            >
+              <div class="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-700">
+                <CreditCard class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>Connect a Stripe account to start creating bills.</span>
               </div>
-
-              <form v-if="authTab === 'login'" @submit.prevent="onLogin" class="mt-3 space-y-2.5">
-                <input
-                  v-model="loginForm.email"
-                  type="email"
-                  required
-                  placeholder="Email"
-                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
-                />
-                <input
-                  v-model="loginForm.password"
-                  type="password"
-                  required
-                  placeholder="Password"
-                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
-                />
-                <button
-                  type="submit"
-                  :disabled="localLoading"
-                  class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50"
-                >
-                  <Loader2 v-if="localLoading" class="h-3.5 w-3.5 animate-spin" />
-                  <span v-else>Log in</span>
-                </button>
-              </form>
-
-              <form v-else @submit.prevent="onSignup" class="mt-3 space-y-2.5">
-                <input
-                  v-model="signupForm.name"
-                  type="text"
-                  placeholder="Business name"
-                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
-                />
-                <input
-                  v-model="signupForm.email"
-                  type="email"
-                  required
-                  placeholder="Email"
-                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
-                />
-                <input
-                  v-model="signupForm.password"
-                  type="password"
-                  required
-                  placeholder="Password"
-                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
-                />
-                <input
-                  v-model="signupForm.stripe_account_id"
-                  type="text"
-                  required
-                  placeholder="Stripe account ID"
-                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
-                />
-                <button
-                  type="submit"
-                  :disabled="localLoading"
-                  class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50"
-                >
-                  <Loader2 v-if="localLoading" class="h-3.5 w-3.5 animate-spin" />
-                  <span v-else>Create account</span>
-                </button>
-              </form>
-
-              <p v-if="localError" class="mt-2 text-center text-[11px] text-destructive">{{ localError }}</p>
+              <RouterLink
+                to="/app/create"
+                class="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft"
+                @click="showAccountMenu = false"
+              >
+                <CreditCard class="h-3.5 w-3.5" />
+                Connect now
+              </RouterLink>
             </div>
+            <div
+              v-else
+              class="mt-3 flex items-center gap-2 rounded-xl bg-success-bg px-3 py-2 text-[11px] font-medium text-success-fg"
+            >
+              <span class="h-1.5 w-1.5 rounded-full bg-success" />
+              Stripe connected
+            </div>
+
+            <button
+              type="button"
+              @click="onLogout"
+              class="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-border text-xs font-semibold text-text-secondary transition hover:bg-input-bg"
+            >
+              <LogOut class="h-3.5 w-3.5" />
+              Sign out
+            </button>
           </div>
         </div>
       </div>

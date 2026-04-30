@@ -13,7 +13,12 @@ import {
   Sparkles,
   Users,
   Zap,
+  LogIn,
+  UserPlus,
 } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth.js'
+
+const auth = useAuthStore()
 
 const checks = ['Free to start', 'No setup fees', 'Cancel anytime']
 const logoNames = ['OLIVE & ASH', 'BLUE BOTTLE', 'ROAM PIZZA', 'KAYA BAR', 'NORTH BREW', 'ORLO BISTRO']
@@ -68,11 +73,20 @@ const currentYear = new Date().getFullYear()
           <a href="#story" class="transition hover:text-foreground">Why Instant</a>
         </nav>
         <RouterLink
+          v-if="auth.isAuthenticated"
           to="/app/create"
           class="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft"
         >
           Open console
           <ArrowUpRight class="h-3.5 w-3.5" />
+        </RouterLink>
+        <RouterLink
+          v-else
+          to="/login"
+          class="inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-surface px-4 text-xs font-semibold text-foreground transition hover:bg-input-bg"
+        >
+          <LogIn class="h-3.5 w-3.5" />
+          Log in
         </RouterLink>
       </div>
     </header>
@@ -101,18 +115,29 @@ const currentYear = new Date().getFullYear()
           </p>
           <div class="mt-9 flex flex-wrap items-center gap-3">
             <RouterLink
+              v-if="auth.isAuthenticated"
               to="/app/create"
               class="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:bg-ink-soft"
             >
-              Create your first bill
+              Open the console
               <ArrowRight class="h-4 w-4" />
             </RouterLink>
-            <RouterLink
-              to="/app/bills"
-              class="inline-flex h-12 items-center gap-2 rounded-full border border-border bg-surface px-6 text-sm font-semibold text-foreground transition hover:bg-input-bg"
-            >
-              See merchant console
-            </RouterLink>
+            <template v-else>
+              <RouterLink
+                to="/signup"
+                class="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:bg-ink-soft"
+              >
+                <UserPlus class="h-4 w-4" />
+                Create account
+              </RouterLink>
+              <RouterLink
+                to="/login"
+                class="inline-flex h-12 items-center gap-2 rounded-full border border-border bg-surface px-6 text-sm font-semibold text-foreground transition hover:bg-input-bg"
+              >
+                <LogIn class="h-4 w-4" />
+                Log in
+              </RouterLink>
+            </template>
           </div>
 
           <dl class="mt-12 grid grid-cols-3 gap-6 border-t border-border pt-8 max-w-md">
@@ -278,10 +303,19 @@ const currentYear = new Date().getFullYear()
             </h2>
           </div>
           <RouterLink
+            v-if="auth.isAuthenticated"
             to="/app/create"
             class="inline-flex h-11 items-center gap-2 rounded-full bg-surface px-5 text-xs font-semibold text-foreground transition hover:bg-brand-tint"
           >
             Try it now
+            <ArrowRight class="h-4 w-4" />
+          </RouterLink>
+          <RouterLink
+            v-else
+            to="/signup"
+            class="inline-flex h-11 items-center gap-2 rounded-full bg-surface px-5 text-xs font-semibold text-foreground transition hover:bg-brand-tint"
+          >
+            Get started
             <ArrowRight class="h-4 w-4" />
           </RouterLink>
         </div>
@@ -352,10 +386,19 @@ const currentYear = new Date().getFullYear()
             </ul>
           </div>
           <RouterLink
+            v-if="auth.isAuthenticated"
             to="/app/create"
             class="inline-flex h-14 shrink-0 items-center gap-2 rounded-full bg-surface px-7 text-sm font-bold text-foreground shadow-pop transition hover:bg-brand-tint"
           >
             Open the console
+            <ArrowUpRight class="h-4 w-4" />
+          </RouterLink>
+          <RouterLink
+            v-else
+            to="/signup"
+            class="inline-flex h-14 shrink-0 items-center gap-2 rounded-full bg-surface px-7 text-sm font-bold text-foreground shadow-pop transition hover:bg-brand-tint"
+          >
+            Get started free
             <ArrowUpRight class="h-4 w-4" />
           </RouterLink>
         </div>
@@ -375,7 +418,7 @@ const currentYear = new Date().getFullYear()
         <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-secondary">
           <a href="#how" class="hover:text-foreground">How it works</a>
           <a href="#features" class="hover:text-foreground">Features</a>
-          <RouterLink to="/app/create" class="hover:text-foreground">Console</RouterLink>
+          <RouterLink v-if="auth.isAuthenticated" to="/app/create" class="hover:text-foreground">Console</RouterLink>
           <span class="text-text-muted">Built for the payments industry.</span>
         </div>
       </div>
