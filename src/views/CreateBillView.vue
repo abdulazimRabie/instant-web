@@ -111,133 +111,137 @@ async function generate(e) {
         </div>
       </div>
 
-      <!-- Bill creation form -->
-      <form @submit="generate" class="mt-6 space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
-        <label class="block">
-          <span class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
-            Bill title
-          </span>
-          <input
-            v-model="title"
-            required
-            placeholder="e.g. Table 14 · Friday Dinner"
-            class="h-11 w-full rounded-xl border border-border bg-input-bg px-4 text-sm font-medium outline-none transition focus:border-foreground focus:bg-surface"
-          />
-        </label>
-
-        <label class="block">
-          <span class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
-            Description (optional)
-          </span>
-          <textarea
-            v-model="description"
-            rows="2"
-            placeholder="A short note guests will see."
-            class="w-full resize-none rounded-xl border border-border bg-input-bg px-4 py-3 text-sm outline-none transition focus:border-foreground focus:bg-surface"
-          />
-        </label>
-
-        <div>
-          <div class="flex items-center justify-between">
-            <label class="text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
-              Line items
-            </label>
-            <button
-              type="button"
-              @click="items = [...items, newRow()]"
-              class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground transition hover:bg-ink-soft"
-            >
-              <Plus class="h-3.5 w-3.5" />
-              Add item
-            </button>
-          </div>
-
-          <div class="mt-3 divide-y divide-divider rounded-2xl border border-border bg-input-bg/50">
-            <div
-              v-for="(row, idx) in items"
-              :key="row.id"
-              class="grid grid-cols-[auto_1fr_80px_120px_auto] items-center gap-3 px-3 py-2.5"
-            >
-              <span class="grid h-7 w-7 place-items-center rounded-lg bg-surface text-[11px] font-bold text-text-secondary">
-                {{ idx + 1 }}
+      <div v-else>
+          <!-- Bill creation form -->
+          <form @submit="generate" class="mt-6 space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
+            <label class="block">
+              <span class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
+                Bill title
               </span>
               <input
-                v-model="row.name"
-                placeholder="Item name"
-                class="h-9 w-full rounded-lg border border-transparent bg-transparent px-2 text-sm font-medium outline-none transition focus:border-border focus:bg-surface"
+                v-model="title"
+                required
+                placeholder="e.g. Table 14 · Friday Dinner"
+                class="h-11 w-full rounded-xl border border-border bg-input-bg px-4 text-sm font-medium outline-none transition focus:border-foreground focus:bg-surface"
               />
-              <input
-                type="number"
-                min="1"
-                inputmode="numeric"
-                :value="row.quantity"
-                @input="update(row.id, { quantity: Math.max(1, parseInt($event.target.value) || 1) })"
-                placeholder="Qty"
-                class="h-9 w-full rounded-lg border border-transparent bg-transparent px-2 text-center text-sm font-medium outline-none transition focus:border-border focus:bg-surface"
+            </label>
+
+            <label class="block">
+              <span class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
+                Description (optional)
+              </span>
+              <textarea
+                v-model="description"
+                rows="2"
+                placeholder="A short note guests will see."
+                class="w-full resize-none rounded-xl border border-border bg-input-bg px-4 py-3 text-sm outline-none transition focus:border-foreground focus:bg-surface"
               />
+            </label>
+
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
+                  Line items
+                </label>
+                <button
+                  type="button"
+                  @click="items = [...items, newRow()]"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground transition hover:bg-ink-soft"
+                >
+                  <Plus class="h-3.5 w-3.5" />
+                  Add item
+                </button>
+              </div>
+
+              <div class="mt-3 divide-y divide-divider rounded-2xl border border-border bg-input-bg/50">
+                <div
+                  v-for="(row, idx) in items"
+                  :key="row.id"
+                  class="grid grid-cols-[auto_1fr_80px_120px_auto] items-center gap-3 px-3 py-2.5"
+                >
+                  <span class="grid h-7 w-7 place-items-center rounded-lg bg-surface text-[11px] font-bold text-text-secondary">
+                    {{ idx + 1 }}
+                  </span>
+                  <input
+                    v-model="row.name"
+                    placeholder="Item name"
+                    class="h-9 w-full rounded-lg border border-transparent bg-transparent px-2 text-sm font-medium outline-none transition focus:border-border focus:bg-surface"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    inputmode="numeric"
+                    :value="row.quantity"
+                    @input="update(row.id, { quantity: Math.max(1, parseInt($event.target.value) || 1) })"
+                    placeholder="Qty"
+                    class="h-9 w-full rounded-lg border border-transparent bg-transparent px-2 text-center text-sm font-medium outline-none transition focus:border-border focus:bg-surface"
+                  />
+                  <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-xs text-text-muted">
+                      $
+                    </span>
+                    <input
+                      inputmode="decimal"
+                      :value="row.amount"
+                      @input="update(row.id, { amount: $event.target.value.replace(/[^0-9.]/g, '') })"
+                      placeholder="0.00"
+                      class="h-9 w-full rounded-lg border border-transparent bg-transparent pl-6 pr-2 text-right text-sm font-semibold outline-none transition focus:border-border focus:bg-surface"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    @click="remove(row.id)"
+                    :disabled="items.length === 1"
+                    class="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition hover:bg-surface hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Remove item"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <label class="block">
+              <span class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
+                Fees / service charge
+              </span>
               <div class="relative">
-                <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-xs text-text-muted">
+                <span class="pointer-events-none absolute inset-y-0 left-4 grid place-items-center text-xs text-text-muted">
                   $
                 </span>
                 <input
                   inputmode="decimal"
-                  :value="row.amount"
-                  @input="update(row.id, { amount: $event.target.value.replace(/[^0-9.]/g, '') })"
+                  v-model="fees"
+                  @input="fees = $event.target.value.replace(/[^0-9.]/g, '')"
                   placeholder="0.00"
-                  class="h-9 w-full rounded-lg border border-transparent bg-transparent pl-6 pr-2 text-right text-sm font-semibold outline-none transition focus:border-border focus:bg-surface"
+                  class="h-11 w-full rounded-xl border border-border bg-input-bg pl-8 pr-4 text-sm font-semibold outline-none transition focus:border-foreground focus:bg-surface"
                 />
               </div>
-              <button
-                type="button"
-                @click="remove(row.id)"
-                :disabled="items.length === 1"
-                class="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition hover:bg-surface hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
-                aria-label="Remove item"
-              >
-                <Trash2 class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
+            </label>
 
-        <label class="block">
-          <span class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
-            Fees / service charge
-          </span>
-          <div class="relative">
-            <span class="pointer-events-none absolute inset-y-0 left-4 grid place-items-center text-xs text-text-muted">
-              $
-            </span>
-            <input
-              inputmode="decimal"
-              v-model="fees"
-              @input="fees = $event.target.value.replace(/[^0-9.]/g, '')"
-              placeholder="0.00"
-              class="h-11 w-full rounded-xl border border-border bg-input-bg pl-8 pr-4 text-sm font-semibold outline-none transition focus:border-foreground focus:bg-surface"
-            />
-          </div>
-        </label>
+          <button
+            type="submit"
+            :disabled="submitting"
+            class="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-bold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="submitting">Generating…</span>
+            <template v-else>
+              Generate Bill
+              <ArrowRight class="h-4 w-4" />
+            </template>
+          </button>
 
-      <button
-        type="submit"
-        :disabled="submitting"
-        class="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-bold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <span v-if="submitting">Generating…</span>
-        <template v-else>
-          Generate Bill
-          <ArrowRight class="h-4 w-4" />
-        </template>
-      </button>
+          <p v-if="store.error" class="mt-3 text-center text-sm text-destructive">
+            {{ store.error }}
+          </p>
+        </form>
+      </div>
 
-      <p v-if="store.error" class="mt-3 text-center text-sm text-destructive">
-        {{ store.error }}
-      </p>
-    </form>
+      
     </div>
 
     <!-- Live summary -->
-    <aside class="lg:sticky lg:top-24 lg:self-start anim-fade-up">
+    <aside v-if="!needsStripe" class="lg:sticky lg:top-24 lg:self-start anim-fade-up">
       <div class="rounded-3xl border border-border bg-dark-grad p-7 text-primary-foreground shadow-pop">
         <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary-foreground/60">
           Bill preview

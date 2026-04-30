@@ -4,8 +4,17 @@ import { useAuthStore } from './auth.js'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://nodejs-instant-api-production.up.railway.app/api'
 
+function deriveTitle(apiBill) {
+  const items = Array.isArray(apiBill.items) ? apiBill.items : []
+  if (items.length === 0) return `Bill ${apiBill.id}`
+  const first = items[0]?.title
+  if (!first) return `Bill ${apiBill.id}`
+  if (items.length === 1) return first
+  return `${first} +${items.length - 1} more`
+}
+
 function mapApiBillToFrontend(apiBill, localData = {}) {
-  const items = (apiBill.items || []).map((item, idx) => ({
+  const items = (Array.isArray(apiBill.items) ? apiBill.items : []).map((item, idx) => ({
     id: `i${idx + 1}`,
     name: item.title,
     amount: item.price,
@@ -30,8 +39,9 @@ function mapApiBillToFrontend(apiBill, localData = {}) {
 
   return {
     id: String(apiBill.id),
-    title: localData.title || `Bill #${apiBill.id}`,
-    description: localData.description || '',
+    merchantId: apiBill.merchant_id != null ? String(apiBill.merchant_id) : undefined,
+    title: apiBill.title || deriveTitle(apiBill),
+    description: apiBill.description || '',
     items,
     fees,
     total,
@@ -50,20 +60,6 @@ export const useBillsStore = defineStore('bills', () => {
   const bills = ref([])
   const loading = ref(false)
   const error = ref(null)
-
-  // Load from localStorage
-  try {
-    const saved = localStorage.getItem('instant_bills')
-    if (saved) {
-      bills.value = JSON.parse(saved)
-    }
-  } catch {
-    // ignore
-  }
-
-  function persist() {
-    localStorage.setItem('instant_bills', JSON.stringify(bills.value))
-  }
 
   async function createBill(formData) {
     loading.value = true
@@ -84,12 +80,11 @@ export const useBillsStore = defineStore('bills', () => {
       const subtotal = items.reduce((s, item) => s + item.price * item.quantity, 0)
 
       const payload = {
+        title: formData.title,
         amount: subtotal + (parseFloat(formData.fees) || 0),
         fees: parseFloat(formData.fees) || 0,
         currency: 'usd',
         items,
-        title: formData.title,
-        description: formData.description
       }
 
       const response = await fetch(`${API_BASE}/bills`, {
@@ -109,13 +104,9 @@ export const useBillsStore = defineStore('bills', () => {
       const data = await response.json()
       const apiBill = data.bill
 
-      const mapped = mapApiBillToFrontend(apiBill, {
-        title: formData.title,
-        description: formData.description,
-      })
+      const mapped = mapApiBillToFrontend(apiBill)
 
       bills.value.unshift(mapped)
-      persist()
 
       return mapped
     } catch (err) {
@@ -147,14 +138,9 @@ export const useBillsStore = defineStore('bills', () => {
       }
 
       const apiBill = await response.json()
+      const mapped = mapApiBillToFrontend(apiBill)
 
-      const mapped = mapApiBillToFrontend(apiBill, {
-        title: existing?.title,
-        description: existing?.description,
-        contributors: existing?.contributors,
-      })
-
-      // Preserve the token from existing local data if backend strips it
+      // Preserve token from existing store entry
       if (existing?.token && !mapped.token) {
         mapped.token = existing.token
       }
@@ -165,7 +151,6 @@ export const useBillsStore = defineStore('bills', () => {
       } else {
         bills.value.unshift(mapped)
       }
-      persist()
 
       return mapped
     } catch (err) {
@@ -183,7 +168,7 @@ export const useBillsStore = defineStore('bills', () => {
     try {
       const auth = useAuthStore()
       if (!auth.auth?.token) {
-        loading.value = false
+        bills.value = []
         return []
       }
 
@@ -195,42 +180,17 @@ export const useBillsStore = defineStore('bills', () => {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
-        // 404 from backend means "no bills" or "merchant not found" — treat as empty array
         if (response.status === 404) {
+          bills.value = []
           return []
         }
         throw new Error(data.message || `Failed to fetch bills: ${response.status}`)
       }
 
       const apiBills = await response.json()
-      const mapped = (Array.isArray(apiBills) ? apiBills : []).map((b) => mapApiBillToFrontend(b))
+      bills.value = (Array.isArray(apiBills) ? apiBills : []).map((b) => mapApiBillToFrontend(b))
 
-      // Merge with local data preserving title/description/contributors
-      mapped.forEach((incoming) => {
-        const idx = bills.value.findIndex((b) => b.id === incoming.id)
-        if (idx >= 0) {
-          const local = bills.value[idx]
-          bills.value[idx] = {
-            ...incoming,
-            title: local.title || incoming.title,
-            description: local.description || incoming.description,
-            contributors: local.contributors || incoming.contributors,
-          }
-        } else {
-          bills.value.push(incoming)
-        }
-      })
-
-      // Remove local-only bills that no longer exist on the server for this merchant
-      // (Only if we successfully fetched — don't clear on network error)
-      const serverIds = new Set(mapped.map((b) => b.id))
-      bills.value = bills.value.filter((b) => {
-        // Keep bills that came from server OR have no merchant association
-        return serverIds.has(b.id) || !b.merchantId
-      })
-
-      persist()
-      return mapped
+      return bills.value
     } catch (err) {
       error.value = err.message || 'Failed to fetch merchant bills'
       throw err
