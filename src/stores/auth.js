@@ -125,7 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function refreshMerchant() {
     if (!auth.value?.token) return
     try {
-      const response = await fetch(`${API_BASE}/auth/merchant/me`, {
+      const response = await fetch(`${API_BASE}/auth/merchant/onboarding-status`, {
         headers: {
           Authorization: `Bearer ${auth.value.token}`,
         },
@@ -134,10 +134,11 @@ export const useAuthStore = defineStore('auth', () => {
       if (!response.ok) return
 
       const data = await response.json()
-      if (data.merchant) {
-        auth.value = { ...auth.value, merchant: data.merchant }
-        saveAuth(auth.value)
+      auth.value = {
+        ...auth.value,
+        merchant: { ...auth.value.merchant, ...data },
       }
+      saveAuth(auth.value)
     } catch {
       // silently ignore refresh errors
     }
