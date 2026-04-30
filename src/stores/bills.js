@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useAuthStore } from './auth.js'
 
-const API_BASE = 'https://nodejs-instant-api-production.up.railway.app/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://nodejs-instant-api-production.up.railway.app/api'
 
 function mapApiBillToFrontend(apiBill, localData = {}) {
   const items = (apiBill.items || []).map((item, idx) => ({
@@ -64,11 +65,22 @@ export const useBillsStore = defineStore('bills', () => {
     localStorage.setItem('instant_bills', JSON.stringify(bills.value))
   }
 
+  function resolveMerchantId() {
+    const auth = useAuthStore()
+    if (auth.merchantId) return auth.merchantId
+    // Fallback to legacy localStorage key for unauthenticated sessions
+    const legacy = localStorage.getItem('instant_merchant_id')
+    if (legacy) return Number(legacy)
+    return 1
+  }
+
   async function createBill(formData) {
     loading.value = true
     error.value = null
 
     try {
+      const merchant_id = resolveMerchantId()
+
       const items = formData.items.map((item) => ({
         title: item.name,
         price: parseFloat(item.amount) || 0,
@@ -78,7 +90,7 @@ export const useBillsStore = defineStore('bills', () => {
       const subtotal = items.reduce((s, item) => s + item.price * item.quantity, 0)
 
       const payload = {
-        merchant_id: 1,
+        merchant_id,
         amount: subtotal + (parseFloat(formData.fees) || 0),
         fees: parseFloat(formData.fees) || 0,
         currency: 'usd',
@@ -92,7 +104,8 @@ export const useBillsStore = defineStore('bills', () => {
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to create bill: ${response.status}`)
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || `Failed to create bill: ${response.status}`)
       }
 
       const data = await response.json()
@@ -115,21 +128,24 @@ export const useBillsStore = defineStore('bills', () => {
     }
   }
 
-  async function fetchBill(id) {
+  async function fetchBill(id, { token: explicitToken } = {}) {
     loading.value = true
     error.value = null
 
     try {
       const existing = bills.value.find((b) => b.id === String(id))
-      const token = existing?.token
+      const token = explicitToken || existing?.token
 
-      const url = token
-        ? `${API_BASE}/bills/${id}?token=${encodeURIComponent(token)}`
-        : `${API_BASE}/bills/${id}`
+      if (!token) {
+        throw new Error('Bill access token is required. Please scan the QR or use the share link.')
+      }
+
+      const url = `${API_BASE}/bills/${id}?token=${encodeURIComponent(token)}`
 
       const response = await fetch(url)
       if (!response.ok) {
-        throw new Error(`Failed to fetch bill: ${response.status}`)
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || `Failed to fetch bill: ${response.status}`)
       }
 
       const apiBill = await response.json()
@@ -139,6 +155,11 @@ export const useBillsStore = defineStore('bills', () => {
         description: existing?.description,
         contributors: existing?.contributors,
       })
+
+      // Preserve the token from existing local data if backend strips it
+      if (existing?.token && !mapped.token) {
+        mapped.token = existing.token
+      }
 
       const idx = bills.value.findIndex((b) => b.id === String(id))
       if (idx >= 0) {
@@ -157,9 +178,68 @@ export const useBillsStore = defineStore('bills', () => {
     }
   }
 
+  async function fetchMerchantBills(merchantId) {
+    loading.value = true
+    error.value = null
+
+    const resolvedId = merchantId || resolveMerchantId()
+    if (!resolvedId) {
+      loading.value = false
+      return []
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/bills/merchant?merchant_id=${encodeURIComponent(resolvedId)}`)
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        // 404 from backend means "no bills" or "merchant not found" — treat as empty array
+        if (response.status === 404) {
+          return []
+        }
+        throw new Error(data.message || `Failed to fetch bills: ${response.status}`)
+      }
+
+      const apiBills = await response.json()
+      const mapped = (Array.isArray(apiBills) ? apiBills : []).map((b) => mapApiBillToFrontend(b))
+
+      // Merge with local data preserving title/description/contributors
+      mapped.forEach((incoming) => {
+        const idx = bills.value.findIndex((b) => b.id === incoming.id)
+        if (idx >= 0) {
+          const local = bills.value[idx]
+          bills.value[idx] = {
+            ...incoming,
+            title: local.title || incoming.title,
+            description: local.description || incoming.description,
+            contributors: local.contributors || incoming.contributors,
+          }
+        } else {
+          bills.value.push(incoming)
+        }
+      })
+
+      // Remove local-only bills that no longer exist on the server for this merchant
+      // (Only if we successfully fetched — don't clear on network error)
+      const serverIds = new Set(mapped.map((b) => b.id))
+      bills.value = bills.value.filter((b) => {
+        // Keep bills that came from server OR have no merchant association
+        return serverIds.has(b.id) || !b.merchantId
+      })
+
+      persist()
+      return mapped
+    } catch (err) {
+      error.value = err.message || 'Failed to fetch merchant bills'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function getBill(id) {
     return bills.value.find((b) => b.id === String(id))
   }
 
-  return { bills, loading, error, createBill, fetchBill, getBill }
+  return { bills, loading, error, createBill, fetchBill, fetchMerchantBills, getBill }
 })

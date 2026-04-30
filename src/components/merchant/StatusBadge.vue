@@ -15,14 +15,14 @@ defineProps({
 
 const styles = {
   active: { bg: 'bg-success-bg', fg: 'text-success-fg', label: 'Active' },
-  completed: { bg: 'bg-success-bg', fg: 'text-success-fg', label: 'Completed' },
+  completed: { bg: 'bg-blue-50', fg: 'text-blue-700', label: 'Completed' },
   expired: { bg: 'bg-expired-bg', fg: 'text-expired-fg', label: 'Expired' },
 }
 
 function dotClass(status) {
   if (status === 'active') return 'bg-success anim-pulse-soft'
-  if (status === 'completed') return 'bg-success'
-  return 'bg-text-muted'
+  if (status === 'completed') return 'bg-blue-500'
+  return 'bg-gray-400'
 }
 </script>
 

@@ -31,8 +31,12 @@ async function loadBill() {
       bill.value = localBill
     }
 
+    // If the URL contains a token query param (e.g. from a shared QR link),
+    // pass it to fetchBill so the backend can authorise the request.
+    const explicitToken = route.query.token || undefined
+
     // Always fetch fresh data from the API
-    const fresh = await store.fetchBill(id.value)
+    const fresh = await store.fetchBill(id.value, { token: explicitToken })
     bill.value = fresh
   } catch {
     if (!bill.value) {
@@ -53,7 +57,15 @@ const pct = computed(() => (bill.value && bill.value.total > 0 ? (bill.value.col
 const sortedContribs = computed(() =>
   bill.value ? [...bill.value.contributors].sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()) : []
 )
-const link = computed(() => (bill.value ? `https://instant.app/p/${bill.value.id}` : ''))
+const link = computed(() => {
+  if (!bill.value) return ''
+  const origin = window.location.origin
+  const token = bill.value.token || route.query.token || ''
+  if (token) {
+    return `${origin}/app/bill/${bill.value.id}?token=${encodeURIComponent(token)}`
+  }
+  return `${origin}/app/bill/${bill.value.id}`
+})
 
 function copy(kind, value) {
   navigator.clipboard?.writeText(value).then(() => {
@@ -88,6 +100,15 @@ function copy(kind, value) {
       <ArrowLeft class="h-3.5 w-3.5" /> All bills
     </RouterLink>
 
+    <!-- Expired notice -->
+    <div
+      v-if="bill.status === 'expired'"
+      class="mt-4 flex items-center gap-2.5 rounded-xl border border-border bg-expired-bg px-4 py-3 text-sm text-expired-fg"
+    >
+      <span class="grid h-6 w-6 place-items-center rounded-full bg-gray-300 text-[10px] font-bold text-white">!</span>
+      <span class="font-medium">This bill has expired and can no longer accept payments.</span>
+    </div>
+
     <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
       <div>
         <div class="flex items-center gap-3">
@@ -117,8 +138,10 @@ function copy(kind, value) {
     </div>
 
     <div class="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-      <!-- QR card -->
-      <div class="rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
+      <!-- Left column: QR + items -->
+      <div class="space-y-6">
+        <!-- QR card -->
+        <div class="rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
         <div class="flex items-center justify-between">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
             Scan to pay
@@ -155,9 +178,60 @@ function copy(kind, value) {
           </button>
         </div>
         <p class="mt-3 truncate text-center text-[11px] text-text-muted">{{ link }}</p>
+        </div>
+
+        <!-- Items card -->
+        <div class="rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
+          <div class="flex items-center justify-between">
+            <h2 class="font-display text-base font-bold">Items</h2>
+            <span class="text-[11px] font-semibold text-text-secondary">
+              {{ bill.items.length }} line items
+            </span>
+          </div>
+          <ul class="mt-4 space-y-3">
+            <li
+              v-for="item in bill.items"
+              :key="item.id"
+              class="flex items-center justify-between rounded-xl bg-input-bg/50 px-3 py-2.5"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="grid h-7 w-7 place-items-center rounded-lg bg-surface text-[11px] font-bold text-text-secondary">
+                  {{ item.qty }}
+                </span>
+                <span class="truncate text-sm font-medium">{{ item.name }}</span>
+              </div>
+              <span class="font-display text-sm font-bold tabular-nums">
+                {{ formatCurrency(item.amount * item.qty) }}
+              </span>
+            </li>
+          </ul>
+
+          <div class="mt-4 space-y-1.5 border-t border-divider pt-4 text-xs text-text-secondary">
+            <div class="flex justify-between">
+              <span>Subtotal</span>
+              <span class="font-medium tabular-nums text-foreground">
+                {{ formatCurrency(bill.total - bill.fees) }}
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span>Fees</span>
+              <span class="font-medium tabular-nums text-foreground">
+                {{ formatCurrency(bill.fees) }}
+              </span>
+            </div>
+          </div>
+          <div class="mt-3 flex items-end justify-between border-t border-divider pt-3">
+            <span class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+              Total
+            </span>
+            <span class="font-display text-xl font-extrabold tabular-nums">
+              {{ formatCurrency(bill.total) }}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <!-- Progress + contributors -->
+      <!-- Right column: Progress + contributors -->
       <div class="space-y-6">
         <div class="rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">

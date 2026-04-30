@@ -1,13 +1,15 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Receipt, Search, Plus } from 'lucide-vue-next'
+import { Receipt, Search, Plus, Loader2 } from 'lucide-vue-next'
 import { formatCurrency, timeAgo } from '@/composables/useInstantData'
 import { useBillsStore } from '@/stores/bills.js'
+import { useAuthStore } from '@/stores/auth.js'
 import StatusBadge from '@/components/merchant/StatusBadge.vue'
 import ProgressBar from '@/components/merchant/ProgressBar.vue'
 
 const store = useBillsStore()
+const auth = useAuthStore()
 const q = ref('')
 const filter = ref('all')
 
@@ -34,6 +36,16 @@ const filtered = computed(() => {
         : true
     )
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+})
+
+onMounted(async () => {
+  if (auth.isAuthenticated) {
+    try {
+      await store.fetchMerchantBills(auth.merchantId)
+    } catch {
+      // Error is stored in store.error
+    }
+  }
 })
 </script>
 
@@ -89,55 +101,18 @@ const filtered = computed(() => {
       </div>
     </div>
 
-    <div class="mt-6 grid gap-3 sm:grid-cols-2">
-      <RouterLink
-        v-for="b in filtered"
-        :key="b.id"
-        :to="`/app/bill/${b.id}`"
-        class="group rounded-2xl border border-border bg-surface p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-pop"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <h3 class="font-display truncate text-base font-bold">{{ b.title }}</h3>
-            <p class="mt-0.5 text-[11px] font-mono tracking-wider text-text-muted">{{ b.id }}</p>
-          </div>
-          <StatusBadge :status="b.status" />
-        </div>
-
-        <div class="mt-5 flex items-end justify-between">
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-              Collected
-            </p>
-            <p class="font-display mt-1 text-2xl font-extrabold tabular-nums">
-              {{ formatCurrency(b.collected) }}
-            </p>
-          </div>
-          <div class="text-right">
-            <p class="text-[11px] text-text-muted">of</p>
-            <p class="text-sm font-semibold text-text-secondary tabular-nums">
-              {{ formatCurrency(b.total) }}
-            </p>
-          </div>
-        </div>
-
-        <div class="mt-3">
-          <ProgressBar :value="(b.collected / b.total) * 100" />
-          <div class="mt-2 flex justify-between text-[11px] text-text-secondary">
-            <span>{{ b.contributors.length }} contributors · {{ timeAgo(b.createdAt) }}</span>
-            <span class="font-semibold text-foreground">{{ Math.round((b.collected / b.total) * 100) }}%</span>
-          </div>
-        </div>
-      </RouterLink>
+    <div v-if="store.loading && store.bills.length === 0" class="mt-10 flex flex-col items-center justify-center py-20">
+      <Loader2 class="h-8 w-8 animate-spin text-text-muted" />
+      <p class="mt-3 text-sm text-text-secondary">Loading bills…</p>
     </div>
 
-    <div v-if="filtered.length === 0" class="mt-10 rounded-3xl border border-dashed border-border bg-surface p-12 text-center shadow-card">
+    <div v-else-if="!auth.isAuthenticated && store.bills.length === 0" class="mt-10 rounded-3xl border border-dashed border-border bg-surface p-12 text-center shadow-card">
       <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-input-bg text-text-muted">
         <Receipt class="h-6 w-6" />
       </span>
-      <h3 class="font-display mt-4 text-lg font-bold">No bills found</h3>
+      <h3 class="font-display mt-4 text-lg font-bold">Sign in to see your bills</h3>
       <p class="mx-auto mt-1.5 max-w-sm text-sm text-text-secondary">
-        Try a different filter, or create a fresh bill to get started.
+        Log in via the account menu in the header to sync your bill history from the server.
       </p>
       <RouterLink
         to="/app/create"
@@ -146,5 +121,65 @@ const filtered = computed(() => {
         <Plus class="h-4 w-4" /> Create a bill
       </RouterLink>
     </div>
+
+    <template v-else>
+      <div v-if="filtered.length > 0" class="mt-6 grid gap-3 sm:grid-cols-2">
+        <RouterLink
+          v-for="b in filtered"
+          :key="b.id"
+          :to="`/app/bill/${b.id}`"
+          class="group rounded-2xl border border-border bg-surface p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-pop"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="font-display truncate text-base font-bold">{{ b.title }}</h3>
+              <p class="mt-0.5 text-[11px] font-mono tracking-wider text-text-muted">{{ b.id }}</p>
+            </div>
+            <StatusBadge :status="b.status" />
+          </div>
+
+          <div class="mt-5 flex items-end justify-between">
+            <div>
+              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                Collected
+              </p>
+              <p class="font-display mt-1 text-2xl font-extrabold tabular-nums">
+                {{ formatCurrency(b.collected) }}
+              </p>
+            </div>
+            <div class="text-right">
+              <p class="text-[11px] text-text-muted">of</p>
+              <p class="text-sm font-semibold text-text-secondary tabular-nums">
+                {{ formatCurrency(b.total) }}
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <ProgressBar :value="(b.collected / b.total) * 100" />
+            <div class="mt-2 flex justify-between text-[11px] text-text-secondary">
+              <span>{{ b.contributors.length }} contributors · {{ timeAgo(b.createdAt) }}</span>
+              <span class="font-semibold text-foreground">{{ Math.round((b.collected / b.total) * 100) }}%</span>
+            </div>
+          </div>
+        </RouterLink>
+      </div>
+
+      <div v-else class="mt-10 rounded-3xl border border-dashed border-border bg-surface p-12 text-center shadow-card">
+        <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-input-bg text-text-muted">
+          <Receipt class="h-6 w-6" />
+        </span>
+        <h3 class="font-display mt-4 text-lg font-bold">No bills found</h3>
+        <p class="mx-auto mt-1.5 max-w-sm text-sm text-text-secondary">
+          Try a different filter, or create a fresh bill to get started.
+        </p>
+        <RouterLink
+          to="/app/create"
+          class="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground"
+        >
+          <Plus class="h-4 w-4" /> Create a bill
+        </RouterLink>
+      </div>
+    </template>
   </div>
 </template>

@@ -1,8 +1,18 @@
 <script setup>
+import { ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { Bell, Plus, Receipt } from 'lucide-vue-next'
+import { Bell, Plus, Receipt, Loader2, LogOut, User } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth.js'
 
 const route = useRoute()
+const auth = useAuthStore()
+const showAuthPanel = ref(false)
+
+const loginForm = ref({ email: '', password: '' })
+const signupForm = ref({ name: '', email: '', password: '', stripe_account_id: '' })
+const authTab = ref('login')
+const localLoading = ref(false)
+const localError = ref(null)
 
 const navItems = [
   { to: '/app/create', label: 'Create Bill' },
@@ -20,6 +30,39 @@ function mobileActive(to, matchPrefix) {
     return matchPrefix.some((p) => route.path.startsWith(p))
   }
   return route.path.startsWith(to)
+}
+
+async function onLogin() {
+  localLoading.value = true
+  localError.value = null
+  try {
+    await auth.loginMerchant({ ...loginForm.value })
+    showAuthPanel.value = false
+    loginForm.value = { email: '', password: '' }
+  } catch (err) {
+    localError.value = err.message
+  } finally {
+    localLoading.value = false
+  }
+}
+
+async function onSignup() {
+  localLoading.value = true
+  localError.value = null
+  try {
+    await auth.signupMerchant({ ...signupForm.value })
+    showAuthPanel.value = false
+    signupForm.value = { name: '', email: '', password: '', stripe_account_id: '' }
+  } catch (err) {
+    localError.value = err.message
+  } finally {
+    localLoading.value = false
+  }
+}
+
+function onLogout() {
+  auth.logout()
+  showAuthPanel.value = false
 }
 </script>
 
@@ -69,8 +112,122 @@ function mobileActive(to, matchPrefix) {
           <Plus class="h-4 w-4" />
           New bill
         </RouterLink>
-        <div class="grid h-10 w-10 place-items-center rounded-full bg-success-bg text-xs font-bold text-success-fg">
-          OA
+
+        <!-- Auth avatar / dropdown trigger -->
+        <div class="relative">
+          <button
+            type="button"
+            @click="showAuthPanel = !showAuthPanel"
+            class="grid h-10 w-10 place-items-center rounded-full text-xs font-bold transition"
+            :class="auth.isAuthenticated ? 'bg-success-bg text-success-fg' : 'bg-input-bg text-text-muted border border-border'"
+            :aria-label="auth.isAuthenticated ? 'Account menu' : 'Log in'"
+          >
+            <template v-if="auth.isAuthenticated">{{ auth.initials }}</template>
+            <User v-else class="h-4 w-4" />
+          </button>
+
+          <!-- Auth panel -->
+          <div
+            v-if="showAuthPanel"
+            class="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-border bg-surface p-5 shadow-pop"
+          >
+            <div v-if="auth.isAuthenticated">
+              <p class="font-display text-sm font-bold">{{ auth.merchant?.name || 'Merchant' }}</p>
+              <p class="mt-0.5 text-xs text-text-secondary">{{ auth.merchant?.email }}</p>
+              <button
+                type="button"
+                @click="onLogout"
+                class="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-border text-xs font-semibold text-text-secondary transition hover:bg-input-bg"
+              >
+                <LogOut class="h-3.5 w-3.5" />
+                Sign out
+              </button>
+            </div>
+
+            <div v-else>
+              <div class="flex rounded-xl border border-border bg-input-bg p-0.5">
+                <button
+                  type="button"
+                  @click="authTab = 'login'"
+                  :class="['flex-1 rounded-lg py-1.5 text-[11px] font-semibold transition', authTab === 'login' ? 'bg-surface text-foreground shadow-sm' : 'text-text-secondary']"
+                >
+                  Log in
+                </button>
+                <button
+                  type="button"
+                  @click="authTab = 'signup'"
+                  :class="['flex-1 rounded-lg py-1.5 text-[11px] font-semibold transition', authTab === 'signup' ? 'bg-surface text-foreground shadow-sm' : 'text-text-secondary']"
+                >
+                  Sign up
+                </button>
+              </div>
+
+              <form v-if="authTab === 'login'" @submit.prevent="onLogin" class="mt-3 space-y-2.5">
+                <input
+                  v-model="loginForm.email"
+                  type="email"
+                  required
+                  placeholder="Email"
+                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
+                />
+                <input
+                  v-model="loginForm.password"
+                  type="password"
+                  required
+                  placeholder="Password"
+                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
+                />
+                <button
+                  type="submit"
+                  :disabled="localLoading"
+                  class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50"
+                >
+                  <Loader2 v-if="localLoading" class="h-3.5 w-3.5 animate-spin" />
+                  <span v-else>Log in</span>
+                </button>
+              </form>
+
+              <form v-else @submit.prevent="onSignup" class="mt-3 space-y-2.5">
+                <input
+                  v-model="signupForm.name"
+                  type="text"
+                  placeholder="Business name"
+                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
+                />
+                <input
+                  v-model="signupForm.email"
+                  type="email"
+                  required
+                  placeholder="Email"
+                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
+                />
+                <input
+                  v-model="signupForm.password"
+                  type="password"
+                  required
+                  placeholder="Password"
+                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
+                />
+                <input
+                  v-model="signupForm.stripe_account_id"
+                  type="text"
+                  required
+                  placeholder="Stripe account ID"
+                  class="h-9 w-full rounded-lg border border-border bg-input-bg px-3 text-xs font-medium outline-none transition focus:border-foreground"
+                />
+                <button
+                  type="submit"
+                  :disabled="localLoading"
+                  class="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft disabled:opacity-50"
+                >
+                  <Loader2 v-if="localLoading" class="h-3.5 w-3.5 animate-spin" />
+                  <span v-else>Create account</span>
+                </button>
+              </form>
+
+              <p v-if="localError" class="mt-2 text-center text-[11px] text-destructive">{{ localError }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
