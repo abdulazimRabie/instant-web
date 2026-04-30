@@ -57,14 +57,15 @@ const pct = computed(() => (bill.value && bill.value.total > 0 ? (bill.value.col
 const sortedContribs = computed(() =>
   bill.value ? [...bill.value.contributors].sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()) : []
 )
+const APP_BASE_URL = import.meta.env.VITE_APP_URL || window.location.origin
+
 const link = computed(() => {
   if (!bill.value) return ''
-  const origin = window.location.origin
   const token = bill.value.token || route.query.token || ''
   if (token) {
-    return `${origin}/app/bill/${bill.value.id}?token=${encodeURIComponent(token)}`
+    return `${APP_BASE_URL}/bill/${bill.value.id}?token=${encodeURIComponent(token)}`
   }
-  return `${origin}/app/bill/${bill.value.id}`
+  return `${APP_BASE_URL}/bill/${bill.value.id}`
 })
 
 function copy(kind, value) {

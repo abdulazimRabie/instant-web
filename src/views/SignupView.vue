@@ -11,7 +11,6 @@ const auth = useAuthStore()
 const name = ref('')
 const email = ref('')
 const password = ref('')
-const stripeAccountId = ref('')
 const localLoading = ref(false)
 const localError = ref(null)
 
@@ -23,7 +22,6 @@ async function onSubmit() {
       name: name.value,
       email: email.value,
       password: password.value,
-      stripe_account_id: stripeAccountId.value || null,
     })
     const redirect = route.query.redirect
     router.replace(redirect && typeof redirect === 'string' ? redirect : '/app/create')
@@ -75,18 +73,6 @@ async function onSubmit() {
             type="password"
             required
             placeholder="••••••••"
-            class="h-11 w-full rounded-xl border border-border bg-input-bg px-4 text-sm font-medium outline-none transition focus:border-foreground focus:bg-surface"
-          />
-        </label>
-
-        <label class="block">
-          <span class="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">
-            Stripe account ID <span class="font-normal normal-case text-text-muted">(optional — you can connect later)</span>
-          </span>
-          <input
-            v-model="stripeAccountId"
-            type="text"
-            placeholder="acct_xxxxxxxxxxxxxxxx"
             class="h-11 w-full rounded-xl border border-border bg-input-bg px-4 text-sm font-medium outline-none transition focus:border-foreground focus:bg-surface"
           />
         </label>
