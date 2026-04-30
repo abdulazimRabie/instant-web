@@ -41,7 +41,7 @@ const filtered = computed(() => {
 onMounted(async () => {
   if (auth.isAuthenticated) {
     try {
-      await store.fetchMerchantBills(auth.merchantId)
+      await store.fetchMerchantBills()
     } catch {
       // Error is stored in store.error
     }

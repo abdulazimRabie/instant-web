@@ -68,14 +68,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function signupMerchant({ name, email, password, stripe_account_id }) {
+  async function signupMerchant({ name, email, password }) {
     loading.value = true
     error.value = null
     try {
       const response = await fetch(`${API_BASE}/auth/merchant/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, stripe_account_id }),
+        body: JSON.stringify({ name, email, password }),
       })
 
       if (!response.ok) {

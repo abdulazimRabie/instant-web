@@ -65,21 +65,15 @@ export const useBillsStore = defineStore('bills', () => {
     localStorage.setItem('instant_bills', JSON.stringify(bills.value))
   }
 
-  function resolveMerchantId() {
-    const auth = useAuthStore()
-    if (auth.merchantId) return auth.merchantId
-    // Fallback to legacy localStorage key for unauthenticated sessions
-    const legacy = localStorage.getItem('instant_merchant_id')
-    if (legacy) return Number(legacy)
-    return 1
-  }
-
   async function createBill(formData) {
     loading.value = true
     error.value = null
 
     try {
-      const merchant_id = resolveMerchantId()
+      const auth = useAuthStore()
+      if (!auth.auth?.token) {
+        throw new Error('Authentication required. Please log in.')
+      }
 
       const items = formData.items.map((item) => ({
         title: item.name,
@@ -90,22 +84,20 @@ export const useBillsStore = defineStore('bills', () => {
       const subtotal = items.reduce((s, item) => s + item.price * item.quantity, 0)
 
       const payload = {
-        merchant_id,
         amount: subtotal + (parseFloat(formData.fees) || 0),
         fees: parseFloat(formData.fees) || 0,
         currency: 'usd',
         items,
-      }
-
-      const auth = useAuthStore()
-      const headers = { 'Content-Type': 'application/json' }
-      if (auth.auth?.token) {
-        headers['Authorization'] = `Bearer ${auth.auth.token}`
+        title: formData.title,
+        description: formData.description
       }
 
       const response = await fetch(`${API_BASE}/bills`, {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${auth.auth.token}`,
+        },
         body: JSON.stringify(payload),
       })
 
@@ -184,24 +176,22 @@ export const useBillsStore = defineStore('bills', () => {
     }
   }
 
-  async function fetchMerchantBills(merchantId) {
+  async function fetchMerchantBills() {
     loading.value = true
     error.value = null
 
-    const resolvedId = merchantId || resolveMerchantId()
-    if (!resolvedId) {
-      loading.value = false
-      return []
-    }
-
     try {
       const auth = useAuthStore()
-      const headers = {}
-      if (auth.auth?.token) {
-        headers['Authorization'] = `Bearer ${auth.auth.token}`
+      if (!auth.auth?.token) {
+        loading.value = false
+        return []
       }
 
-      const response = await fetch(`${API_BASE}/bills/merchant?merchant_id=${encodeURIComponent(resolvedId)}`, { headers })
+      const response = await fetch(`${API_BASE}/bills/merchant`, {
+        headers: {
+          Authorization: `Bearer ${auth.auth.token}`,
+        },
+      })
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
