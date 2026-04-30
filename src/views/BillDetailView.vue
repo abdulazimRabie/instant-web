@@ -68,6 +68,15 @@ const link = computed(() => {
   return `${APP_BASE_URL}/bill/${bill.value.id}`
 })
 
+const billCode = computed(() => {
+  if (!bill.value) return ''
+  const token = bill.value.token || route.query.token || ''
+  if (token) {
+    return `${bill.value.id}:${token}`
+  }
+  return String(bill.value.id)
+})
+
 function copy(kind, value) {
   navigator.clipboard?.writeText(value).then(() => {
     copied.value = kind
@@ -164,21 +173,21 @@ function copy(kind, value) {
         <div class="mt-5 grid gap-2.5 sm:grid-cols-2">
           <button
             type="button"
-            @click="copy('link', link)"
+            @click="copy('code', billCode)"
             class="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface text-xs font-semibold transition hover:bg-input-bg"
           >
-            <Check v-if="copied === 'link'" class="h-4 w-4 text-success" />
+            <Check v-if="copied === 'code'" class="h-4 w-4 text-success" />
             <Copy v-else class="h-4 w-4" />
-            {{ copied === 'link' ? 'Copied!' : 'Copy link' }}
+            {{ copied === 'code' ? 'Copied!' : billCode }}
           </button>
           <button
             type="button"
+            @click="copy('link', link)"
             class="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft"
           >
-            <Share2 class="h-4 w-4" /> Share
+            <Copy class="h-4 w-4" /> Copy link
           </button>
         </div>
-        <p class="mt-3 truncate text-center text-[11px] text-text-muted">{{ link }}</p>
         </div>
 
         <!-- Items card -->
