@@ -56,6 +56,7 @@ const router = createRouter({
     {
       path: '/app',
       component: AppLayout,
+      redirect: '/app/bills',
       children: [
         {
           path: 'create',
@@ -92,7 +93,7 @@ router.beforeEach((to, from, next) => {
   }
 
   if (to.meta.guestOnly && authenticated) {
-    next({ name: 'create' })
+    next({ name: 'bills' })
     return
   }
 
