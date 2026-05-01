@@ -13,7 +13,7 @@ export const merchant = {
 export function formatCurrency(n) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: "GBP",
     minimumFractionDigits: 2,
   }).format(n);
 }
