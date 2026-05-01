@@ -49,6 +49,10 @@ function mapApiBillToFrontend(apiBill, localData = {}) {
     } else {
       status = 'active'
     }
+  } else if (apiBill.status === 'paid' || apiBill.status === 'completed') {
+    status = 'completed'
+  } else if (apiBill.status === 'expired') {
+    status = 'expired'
   }
 
   return {
@@ -60,6 +64,8 @@ function mapApiBillToFrontend(apiBill, localData = {}) {
     fees,
     total,
     collected: paidAmount,
+    remaining,
+    pendingAmount: apiBill.pending_amount !== undefined ? parseFloat(apiBill.pending_amount) : 0,
     status,
     createdAt: apiBill.created_at,
     expiresAt: apiBill.expires_at,
@@ -98,7 +104,7 @@ export const useBillsStore = defineStore('bills', () => {
         title: formData.title,
         amount: subtotal + (parseFloat(formData.fees) || 0),
         fees: parseFloat(formData.fees) || 0,
-        currency: 'usd',
+        currency: 'gbp',
         items,
       }
 

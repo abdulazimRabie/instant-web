@@ -33,7 +33,7 @@ const steps = [
   {
     n: '02',
     icon: ScanLine,
-    title: 'Guests scan and pay',
+    title: 'Everyone scans and pays',
     body: 'Each person scans the QR, chooses their amount on the numpad, and pays with Stripe — instantly.',
   },
   {
@@ -46,7 +46,7 @@ const steps = [
 
 const features = [
   { icon: QrCode, t: 'QR + Shareable Link', b: 'Print, project, or share digitally. Works on any phone camera.' },
-  { icon: Users, t: 'Anonymous Pay', b: 'Guests can leave their name or stay anonymous. Zero sign-up required.' },
+  { icon: Users, t: 'Quick Split', b: 'Anyone can scan and pay their share in seconds. Simple, fast, and hassle-free.' },
   { icon: Zap, t: 'Real-time Balance', b: 'Watch contributions land live. Merchant gets push notifications.' },
   { icon: ShieldCheck, t: 'Stripe-powered', b: 'PCI-compliant payments routed straight to your merchant account.' },
   { icon: Receipt, t: 'Bill History', b: 'Filter active, completed, and expired bills. Export anytime.' },
@@ -74,7 +74,7 @@ const currentYear = new Date().getFullYear()
         </nav>
         <RouterLink
           v-if="auth.isAuthenticated"
-          to="/app/create"
+          to="/app/bills"
           class="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground transition hover:bg-ink-soft"
         >
           Open console
@@ -110,13 +110,13 @@ const currentYear = new Date().getFullYear()
             </span>
           </h1>
           <p class="mt-6 max-w-xl text-balance text-base text-text-secondary sm:text-lg">
-            Instant lets merchants generate a shared bill, display a QR code, and let every guest scan,
-            choose their amount, and pay via Stripe. No accounts. No "I'll pay you back". Just done.
+            Instant lets merchants generate a shared bill, display a QR code, and let everyone scan,
+            choose their amount, and pay via Stripe. No "I'll pay you back". Just done.
           </p>
           <div class="mt-9 flex flex-wrap items-center gap-3">
             <RouterLink
               v-if="auth.isAuthenticated"
-              to="/app/create"
+              to="/app/bills"
               class="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:bg-ink-soft"
             >
               Open the console
@@ -147,7 +147,7 @@ const currentYear = new Date().getFullYear()
             </div>
             <div>
               <dt class="font-display text-2xl font-bold tracking-tight text-foreground">0</dt>
-              <dd class="mt-1 text-xs text-text-secondary">Account required</dd>
+              <dd class="mt-1 text-xs text-text-secondary">Setup fees</dd>
             </div>
             <div>
               <dt class="font-display text-2xl font-bold tracking-tight text-foreground">Live</dt>
@@ -272,7 +272,7 @@ const currentYear = new Date().getFullYear()
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand">The story</p>
           <h2 class="font-display mt-4 text-balance text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl">
-            "Who's paying for the wine?"
+            "Who's paying for the tea?"
           </h2>
         </div>
         <div class="space-y-6 text-base leading-relaxed text-text-secondary sm:text-lg">
@@ -281,11 +281,11 @@ const currentYear = new Date().getFullYear()
             puts a card down. The Venmo requests start the next morning.
           </p>
           <p>
-            With Instant, the merchant generates a shared bill in five seconds. Each guest scans the QR,
+            With Instant, the merchant generates a shared bill in five seconds. Each person scans the QR,
             picks their amount, and pays — directly via Stripe. The bill updates live, the merchant gets
             notified, and everyone sees the remaining balance shrink in real time.
           </p>
-          <p class="font-medium text-foreground">No accounts. No friction. No "I'll pay you back."</p>
+          <p class="font-medium text-foreground">No friction. No "I'll pay you back."</p>
         </div>
       </div>
     </section>
@@ -299,12 +299,12 @@ const currentYear = new Date().getFullYear()
               How it works
             </p>
             <h2 class="font-display mt-4 text-balance text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl">
-              Three steps. No download. No account.
+              Three steps. Simple and fast.
             </h2>
           </div>
           <RouterLink
             v-if="auth.isAuthenticated"
-            to="/app/create"
+            to="/app/bills"
             class="inline-flex h-11 items-center gap-2 rounded-full bg-surface px-5 text-xs font-semibold text-foreground transition hover:bg-brand-tint"
           >
             Try it now
@@ -387,7 +387,7 @@ const currentYear = new Date().getFullYear()
           </div>
           <RouterLink
             v-if="auth.isAuthenticated"
-            to="/app/create"
+            to="/app/bills"
             class="inline-flex h-14 shrink-0 items-center gap-2 rounded-full bg-surface px-7 text-sm font-bold text-foreground shadow-pop transition hover:bg-brand-tint"
           >
             Open the console
@@ -418,7 +418,7 @@ const currentYear = new Date().getFullYear()
         <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-secondary">
           <a href="#how" class="hover:text-foreground">How it works</a>
           <a href="#features" class="hover:text-foreground">Features</a>
-          <RouterLink v-if="auth.isAuthenticated" to="/app/create" class="hover:text-foreground">Console</RouterLink>
+          <RouterLink v-if="auth.isAuthenticated" to="/app/bills" class="hover:text-foreground">Console</RouterLink>
           <span class="text-text-muted">Built for the payments industry.</span>
         </div>
       </div>

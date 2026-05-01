@@ -10,8 +10,8 @@ const auth = useAuthStore()
 const showAccountMenu = ref(false)
 
 const navItems = [
-  { to: '/app/create', label: 'Create Bill' },
   { to: '/app/bills', label: 'Bills' },
+  { to: '/app/create', label: 'Create Bill' },
 ]
 
 function isActive(item) {
@@ -37,12 +37,12 @@ function onLogout() {
 <template>
   <header class="sticky top-0 z-30 border-b border-border bg-surface/85 backdrop-blur-xl">
     <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-      <RouterLink to="/app/create" class="flex items-center gap-3">
-        <span class="grid h-9 w-9 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
+      <RouterLink to="/app/bills" class="flex items-center gap-2.5">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-primary text-2xl font-bold text-primary-foreground">
           ⌁
         </span>
         <div class="flex flex-col leading-none">
-          <span class="font-display text-base font-bold tracking-tight text-foreground">
+          <span class="font-display text-lg font-bold tracking-tight text-foreground">
             Instant
           </span>
           <span class="text-[11px] font-medium text-text-secondary">Merchant Console</span>
@@ -145,16 +145,6 @@ function onLogout() {
     <!-- Mobile tab bar -->
     <nav class="flex items-center gap-1 border-t border-border px-3 py-2 sm:hidden">
       <RouterLink
-        to="/app/create"
-        :class="[
-          'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition',
-          mobileActive('/app/create') ? 'bg-primary text-primary-foreground' : 'text-text-secondary',
-        ]"
-      >
-        <Plus class="h-4 w-4" />
-        Create
-      </RouterLink>
-      <RouterLink
         to="/app/bills"
         :class="[
           'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition',
@@ -163,6 +153,16 @@ function onLogout() {
       >
         <Receipt class="h-4 w-4" />
         Bills
+      </RouterLink>
+      <RouterLink
+        to="/app/create"
+        :class="[
+          'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition',
+          mobileActive('/app/create') ? 'bg-primary text-primary-foreground' : 'text-text-secondary',
+        ]"
+      >
+        <Plus class="h-4 w-4" />
+        Create
       </RouterLink>
     </nav>
   </header>

@@ -42,7 +42,6 @@ onMounted(async () => {
   if (auth.isAuthenticated) {
     try {
       await store.fetchMerchantBills()
-      console.log(store.bills)
     } catch {
       // Error is stored in store.error
     }
