@@ -2,25 +2,28 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import QrcodeVue from 'qrcode.vue'
-import { ArrowLeft, Check, Copy, Share2, X, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Check, Copy, Share2, Loader2 } from 'lucide-vue-next'
 import {
   formatCurrency,
   initialOf,
   timeAgo,
 } from '@/composables/useInstantData'
 import { useBillsStore } from '@/stores/bills.js'
+import { useBillSocket } from '@/composables/useBillSocket.js'
 import StatusBadge from '@/components/merchant/StatusBadge.vue'
 import ProgressBar from '@/components/merchant/ProgressBar.vue'
 import Avatar from '@/components/merchant/Avatar.vue'
 
 const route = useRoute()
 const store = useBillsStore()
+const { connect, disconnect } = useBillSocket()
 
 const id = computed(() => route.params.id)
 const bill = ref(null)
 const contributors = ref([])
 const loading = ref(true)
 const notFound = ref(false)
+const pendingAmount = ref(0)
 
 async function loadBill() {
   loading.value = true
@@ -40,9 +43,46 @@ async function loadBill() {
     const fresh = await store.fetchBill(id.value, { token: explicitToken })
     bill.value = fresh
 
+    // Sync pending amount from API response so progress bar shows existing pending payments
+    pendingAmount.value = fresh.pendingAmount || 0
+
     // Fetch real contributors from the API
     contributors.value = await store.fetchContributors(id.value)
-    console.log(contributors.value)
+
+    // Connect to realtime updates after initial load
+    connect(id.value, {
+      onPaymentInitiated(data) {
+        if (bill.value) {
+          bill.value.remaining = data.remaining
+        }
+        pendingAmount.value = data.pending_amount
+      },
+      onPaymentSucceeded(data) {
+        if (bill.value) {
+          bill.value.collected = data.paid_amount
+          bill.value.remaining = data.remaining
+        }
+        pendingAmount.value = data.pending_amount
+        contributors.value.unshift({
+          id: `rt-${Date.now()}`,
+          name: data.contributor.name,
+          amount: data.contributor.amount,
+          paidAt: new Date().toISOString(),
+        })
+      },
+      onPaymentCancelled(data) {
+        if (bill.value) {
+          bill.value.collected = data.paid_amount
+          bill.value.remaining = data.remaining
+        }
+        pendingAmount.value = data.pending_amount
+      },
+      onBillPaid() {
+        if (bill.value) {
+          bill.value.status = 'completed'
+        }
+      },
+    })
   } catch {
     if (!bill.value) {
       notFound.value = true
@@ -53,12 +93,19 @@ async function loadBill() {
 }
 
 onMounted(loadBill)
-watch(id, loadBill)
+watch(id, () => {
+  disconnect()
+  pendingAmount.value = 0
+  loadBill()
+})
 
 const copied = ref(null)
 
-const remaining = computed(() => (bill.value ? Math.max(0, bill.value.total - bill.value.collected) : 0))
+const remaining = computed(() => (bill.value?.remaining !== undefined ? Math.max(0, bill.value.remaining) : 0))
 const pct = computed(() => (bill.value && bill.value.total > 0 ? (bill.value.collected / bill.value.total) * 100 : 0))
+const pendingPct = computed(() =>
+  bill.value && bill.value.total > 0 ? (pendingAmount.value / bill.value.total) * 100 : 0
+)
 const sortedContribs = computed(() =>
   [...contributors.value].sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())
 )
@@ -126,7 +173,7 @@ function copy(kind, value) {
 
     <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
           <h1 class="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
             {{ bill.title }}
           </h1>
@@ -143,13 +190,6 @@ function copy(kind, value) {
         </button>
         <p v-if="bill.description" class="mt-3 max-w-xl text-sm text-text-secondary">{{ bill.description }}</p>
       </div>
-      <button
-        v-if="bill.status === 'active'"
-        type="button"
-        class="inline-flex h-11 items-center gap-2 rounded-full border border-destructive bg-transparent px-5 text-xs font-semibold text-destructive transition hover:bg-destructive/5"
-      >
-        <X class="h-4 w-4" /> Close bill
-      </button>
     </div>
 
     <div class="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
@@ -249,24 +289,25 @@ function copy(kind, value) {
       <!-- Right column: Progress + contributors -->
       <div class="space-y-6">
         <div class="rounded-3xl border border-border bg-surface p-6 shadow-card sm:p-8">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+          <p class="text-xs font-medium uppercase tracking-wide text-text-secondary">
             Remaining
           </p>
-          <div class="mt-2 flex items-end justify-between gap-3">
-            <p class="font-display text-5xl font-extrabold tracking-tight tabular-nums">
+          <div class="mt-1.5 flex items-baseline gap-1.5">
+            <p class="font-display text-4xl font-bold tracking-tight tabular-nums">
               {{ formatCurrency(remaining) }}
             </p>
-            <p class="pb-1.5 text-xs text-text-secondary">
+            <p class="text-[13px] text-text-muted">
               of {{ formatCurrency(bill.total) }}
             </p>
           </div>
-          <div class="mt-5">
-            <ProgressBar :value="pct" className="h-2" />
-            <div class="mt-2 flex justify-between text-[11px] text-text-secondary">
+          <div class="mt-3">
+            <ProgressBar :value="pct" :pending="pendingPct" className="h-2" />
+            <div class="mt-2 flex justify-between text-xs text-text-secondary">
               <span>
-                <span class="font-semibold text-foreground">{{ formatCurrency(bill.collected) }}</span> collected
+                <span class="font-bold text-foreground">{{ formatCurrency(bill.collected) }}</span> collected
+                <span v-if="pendingAmount > 0" class="ml-1.5 font-medium text-pending-fg">+ {{ formatCurrency(pendingAmount) }} pending</span>
               </span>
-              <span>{{ Math.round(pct) }}%</span>
+              <span>{{ Math.round(pct + pendingPct) }}%</span>
             </div>
           </div>
 
