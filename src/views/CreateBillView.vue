@@ -10,14 +10,12 @@ const router = useRouter()
 const store = useBillsStore()
 const auth = useAuthStore()
 
-const title = ref('Table 14 · Friday Dinner')
+const title = ref('')
 const description = ref('')
 const items = ref([
-  { id: crypto.randomUUID(), name: 'Truffle Pasta', amount: '24.00', quantity: 1 },
-  { id: crypto.randomUUID(), name: 'Wagyu Burger', amount: '32.00', quantity: 1 },
-  { id: crypto.randomUUID(), name: 'House Red', amount: '48.00', quantity: 1 },
+  { id: crypto.randomUUID(), name: '', amount: '', quantity: 1 },
 ])
-const fees = ref('8.50')
+const fees = ref('')
 const submitting = ref(false)
 const connecting = ref(false)
 
@@ -133,7 +131,7 @@ async function generate(e) {
               <textarea
                 v-model="description"
                 rows="2"
-                placeholder="A short note guests will see."
+                placeholder="A short note everyone will see."
                 class="w-full resize-none rounded-xl border border-border bg-input-bg px-4 py-3 text-sm outline-none transition focus:border-foreground focus:bg-surface"
               />
             </label>
