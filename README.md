@@ -1,44 +1,33 @@
-# instant-web
+# instant
 
-This template should help get you started developing with Vue 3 in Vite.
+**Instant** is a fintech solution that enables merchant/users to generate shared bill/invoice and contributor can pay for the bill untill getting charged.
 
-## Recommended IDE Setup
+<img src="public/cover.png" style="border-radius: 10px"/>
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+Video about the project : [Youtube](https://www.youtube.com/watch?v=-8foQt7gtG4)
 
-## Recommended Browser Setup
+## Overview
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+<img src='public/overview.svg' style="border-radius: 10px" />
 
-## Customize configuration
+## Installation
 
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+```sh
+git clone git@github.com:abdulazimRabie/instant-web.git
+```
 
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+- To Run :
 
 ```sh
 npm run dev
 ```
 
-### Compile and Minify for Production
+- To Build :
 
 ```sh
 npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
 ```
